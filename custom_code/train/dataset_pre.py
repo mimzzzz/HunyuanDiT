@@ -1,7 +1,7 @@
 import os.path
 import pandas as pd
 
-file_name = 'liuzeming_model_0117.txt'
+file_name = 'model_0117.txt'
 with open(file_name, 'r') as f:
     res = f.read().splitlines()
 
