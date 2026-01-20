@@ -204,6 +204,12 @@ class FlashSelfMHAModified(nn.Module):
             q, k = qq, kk
 
         qkv = torch.stack([q, k, v], dim=2)  # [b, s, 3, h, d]
+        # ================== 插入开始 ==================
+        # Flash Attention 严禁 Float32。
+        # 如果发现是 Float32，强制转成 BFloat16 (因为你的权重是 BF16)
+        if qkv.dtype != torch.bfloat16:
+            qkv = qkv.to(torch.bfloat16)
+        # ================== 插入结束 ==================
         context = self.inner_attn(qkv)
         out = self.out_proj(context.view(b, s, d))
         out = self.proj_drop(out)
@@ -301,7 +307,16 @@ class FlashCrossMHAModified(nn.Module):
             assert qq.shape == q.shape, f"qq: {qq.shape}, q: {q.shape}"
             q = qq  # [b, s1, h, d]
         kv = torch.stack([k, v], dim=2)  # [b, s1, 2, h, d]
-        context = self.inner_attn(q, kv)  # [b, s1, h, d]
+        # ================== 插入开始 (Cross Attention) ==================
+        # 霸道强转：只要不是 BF16，统统转过去！
+        if q.dtype != torch.bfloat16:
+            q = q.to(torch.bfloat16)
+            
+        if kv.dtype != torch.bfloat16:
+            kv = kv.to(torch.bfloat16)
+        # ================== 插入结束 ==================
+
+        context = self.inner_attn(q, kv)  # <--- 原来的代码
         context = context.view(b, s1, -1)  # [b, s1, D]
 
         if is_ipa:

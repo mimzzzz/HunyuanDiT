@@ -498,9 +498,19 @@ class HunYuanDiT(ModelMixin, ConfigMixin, PeftAdapterMixin):
         text_states_mask = text_embedding_mask.bool()  # 2,77
         text_states_t5_mask = text_embedding_mask_t5.bool()  # 2,256
         b_t5, l_t5, c_t5 = text_states_t5.shape
-        text_states_t5 = self.mlp_t5(text_states_t5.view(-1, c_t5))
+        #text_states_t5 = self.mlp_t5(text_states_t5.view(-1, c_t5))
+        #if text_states_t5.dtype != self.mlp_t5[0].weight.dtype:
+        #    text_states_t5 = text_states_t5.to(self.mlp_t5[0].weight.dtype)
+        #text_states_t5 = self.mlp_t5(text_states_t5.view(-1, c_t5))
+        if hasattr(self, 'mlp_t5') and self.mlp_t5 is not None:
+            target_dtype = self.mlp_t5[0].weight.dtype
+            if text_states_t5.dtype != target_dtype:
+                text_states_t5 = text_states_t5.to(target_dtype)
+            
+            text_states_t5 = self.mlp_t5(text_states_t5.view(-1, c_t5))
+        
         text_states = torch.cat(
-            [text_states, text_states_t5.view(b_t5, l_t5, -1)], dim=1
+           [text_states, text_states_t5.view(b_t5, l_t5, -1)], dim=1
         )  # 2,205，1024
         clip_t5_mask = torch.cat([text_states_mask, text_states_t5_mask], dim=-1)
 
@@ -512,6 +522,15 @@ class HunYuanDiT(ModelMixin, ConfigMixin, PeftAdapterMixin):
         )
 
         _, _, oh, ow = x.shape
+        target_dtype = self.x_embedder.proj.weight.dtype
+        
+        # 2. 强制转换图片输入 x
+        if x.dtype != target_dtype:
+            x = x.to(target_dtype)
+            
+        # 3. 强制转换文本输入 text_states (如果有的话)
+        if text_states is not None and text_states.dtype != target_dtype:
+            text_states = text_states.to(target_dtype)
         th, tw = oh // self.patch_size, ow // self.patch_size
 
         # ========================= Build time and image embedding =========================
@@ -523,7 +542,16 @@ class HunYuanDiT(ModelMixin, ConfigMixin, PeftAdapterMixin):
 
         # ========================= Concatenate all extra vectors =========================
         # Build text tokens with pooling
-        extra_vec = self.pooler(encoder_hidden_states_t5)
+        # ================== 插入开始 ==================
+        # 获取当前权重的类型 (BF16)
+        target_dtype = self.x_embedder.proj.weight.dtype  # ✅ 绝对稳
+        
+        # 强制转换 encoder_hidden_states_t5
+        if encoder_hidden_states_t5.dtype != target_dtype:
+            encoder_hidden_states_t5 = encoder_hidden_states_t5.to(target_dtype)
+        # ================== 插入结束 ==================
+
+        extra_vec = self.pooler(encoder_hidden_states_t5)  # <--- 这是原来的报错行
 
         if self.args.size_cond == None:
             image_meta_size = None

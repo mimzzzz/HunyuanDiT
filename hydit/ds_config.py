@@ -6,7 +6,6 @@ def deepspeed_config_from_args(args, global_batch_size):
     if args.use_zero_stage == 2:
         deepspeed_config = {
             "zero_allow_untested_optimizer": True,
-            "train_batch_size": global_batch_size,
             "train_micro_batch_size_per_gpu": args.batch_size,
             "gradient_accumulation_steps": args.grad_accu_steps,
             "steps_per_print": args.log_every,
@@ -31,10 +30,10 @@ def deepspeed_config_from_args(args, global_batch_size):
                 "loss_scale": 0,
                 "loss_scale_window": 500,
                 "hysteresis": 2,
-                "min_loss_scale": 1e-3,
+                "min_loss_scale": 1,
                 "initial_scale_power": 15,
             },
-            "bf16": {"enabled": False},
+            "bf16": {"enabled": not args.use_fp16},
             "wall_clock_breakdown": False,
         }
         if args.cpu_offloading == True:
