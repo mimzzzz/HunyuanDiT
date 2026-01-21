@@ -8,8 +8,8 @@ task_flag="l20_2m_finetune"
 index_file="/data/aigc/HunyuanDiT-main/datasets/arrow_index1/train_dataset.json"
 
 # 模型权重路径
-resume_module_root="ckpts/t2i/model/pytorch_model_distill.pt"
-resume_ema_root="ckpts/t2i/model/pytorch_model_ema.pt"
+resume_module_root="/data/aigc/HunyuanDiT-main/ckpts/t2i/model/pytorch_model_distill.pt"
+resume_ema_root="/data/aigc/HunyuanDiT-main/ckpts/t2i/model/pytorch_model_ema.pt"
 results_dir="./log_EXP"
 
 # ================= 训练参数 (适配 L20 48G) =================
@@ -24,7 +24,7 @@ grad_accu_steps=2
 lr=0.0001
 
 # 训练轮数：200万数据建议跑 1-2 个 Epoch
-epochs=2
+epochs=5
 
 # 保存频率：每 5000 步存一次
 ckpt_every=5000
@@ -48,7 +48,7 @@ sh $(dirname "$0")/run_g.sh \
     --warmup-num-steps 2000 \
     --use-flash-attn \
     --use-zero-stage 2 \
-    --gradient-checkpointing \
+#    --gradient-checkpointing \
     --results-dir ${results_dir} \
     --resume \
     --resume-module-root ${resume_module_root} \
@@ -60,6 +60,7 @@ sh $(dirname "$0")/run_g.sh \
     --deepspeed \
     --rope-img base1024 \
     --no-fp16 \
+    --use-ema \
     "$@"
 
 # 解释：

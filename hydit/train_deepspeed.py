@@ -464,6 +464,12 @@ def main(args):
     logger.info(f"    Training parts: {args.training_parts}")
 
     if args.deepspeed:
+        # ================== 【插入这段代码】 ==================
+        # 强制将模型所有权重转换为 BFloat16
+        # 这样整个模型就变成了 BF16 管道，再也不会报类型冲突了
+        print(f"Force converting model to BFloat16...")
+        model.to(torch.bfloat16)
+        # ================== 【插入结束】 ==================
         model, opt, scheduler = deepspeed_initialize(
             args, logger, model, opt, deepspeed_config
         )

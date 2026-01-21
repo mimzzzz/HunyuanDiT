@@ -11,4 +11,4 @@ https://huggingface.co/Tencent-Hunyuan/HunyuanDiT-v1.2/tree/main/t2i
 和
 https://huggingface.co/Tencent-Hunyuan/Distillation-v1.2/tree/main
 
-bash hydit/train.sh
+PYTHONPATH=. nohup bash hydit/train.sh &

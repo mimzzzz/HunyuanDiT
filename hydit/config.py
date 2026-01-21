@@ -23,8 +23,9 @@ def get_args(default_args=None):
     parser.add_argument("--seed", type=int, default=42, help="A seed for all the prompts.")
     parser.add_argument("--use-fp16", action="store_true", help="Use FP16 precision.")
     parser.add_argument("--no-fp16", dest="use_fp16", action="store_false")
-    parser.set_defaults(use_fp16=True)
+    parser.set_defaults(use_fp16=False)
     parser.add_argument("--extra-fp16", action="store_true", help="Use extra fp16 for vae and text_encoder.")
+    parser.set_defaults(extra_fp16=False)
 
     # HunYuan-DiT
     parser.add_argument("--model", type=str, choices=list(HUNYUAN_DIT_CONFIG.keys()), default="DiT-g/2")
