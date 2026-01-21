@@ -1,6 +1,17 @@
-作为一名在炼丹炉旁守候多年的“老丹师”，我很乐意为你详细拆解这些参数。训练 HunyuanDiT 这样的大模型，其实就是在显存（VRAM）、**速度（Speed）和效果（Quality）**这三者之间走钢丝。
+build train dataset
+python hydit/data_loader/csv2arrow.py datasets/train_dataset.csv datasets/arrow_index1 8
 
-我将基于你上传的 config1.sh 和 config2.sh 中的关键参数，结合深度学习的通用经验，为你逐一解析。
+build train index
+python hydit/index_kits/index_v2_builder.py datasets/arrow_index1/train_dataset.json datasets/arrow_index1
+or
+python index.poy
+
+官方model
+https://huggingface.co/Tencent-Hunyuan/HunyuanDiT-v1.2/tree/main/t2i
+和
+https://huggingface.co/Tencent-Hunyuan/Distillation-v1.2/tree/main
+
+PYTHONPATH=. bash hydit/train.sh
 
 第一部分：核心“火候”控制 (训练动力学)
 这部分参数直接决定模型能不能学会，学得快还是慢。
