@@ -17,9 +17,9 @@ except Exception as e:
 
 
 def reshape_for_broadcast(
-    freqs_cis: Union[torch.Tensor, Tuple[torch.Tensor]],
-    x: torch.Tensor,
-    head_first=False,
+        freqs_cis: Union[torch.Tensor, Tuple[torch.Tensor]],
+        x: torch.Tensor,
+        head_first=False,
 ):
     """
     Reshape frequency tensor for broadcasting it with another tensor.
@@ -88,10 +88,10 @@ def rotate_half(x):
 
 
 def apply_rotary_emb(
-    xq: torch.Tensor,
-    xk: Optional[torch.Tensor],
-    freqs_cis: Union[torch.Tensor, Tuple[torch.Tensor]],
-    head_first: bool = False,
+        xq: torch.Tensor,
+        xk: Optional[torch.Tensor],
+        freqs_cis: Union[torch.Tensor, Tuple[torch.Tensor]],
+        head_first: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Apply rotary embeddings to input tensors using the given frequency tensor.
@@ -141,16 +141,16 @@ class FlashSelfMHAModified(nn.Module):
     """
 
     def __init__(
-        self,
-        dim,
-        num_heads,
-        qkv_bias=True,
-        qk_norm=False,
-        attn_drop=0.0,
-        proj_drop=0.0,
-        device=None,
-        dtype=None,
-        norm_layer=nn.LayerNorm,
+            self,
+            dim,
+            num_heads,
+            qkv_bias=True,
+            qk_norm=False,
+            attn_drop=0.0,
+            proj_drop=0.0,
+            device=None,
+            dtype=None,
+            norm_layer=nn.LayerNorm,
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
@@ -159,7 +159,7 @@ class FlashSelfMHAModified(nn.Module):
         assert self.dim % num_heads == 0, "self.kdim must be divisible by num_heads"
         self.head_dim = self.dim // num_heads
         assert (
-            self.head_dim % 8 == 0 and self.head_dim <= 128
+                self.head_dim % 8 == 0 and self.head_dim <= 128
         ), "Only support head_dim <= 128 and divisible by 8"
 
         self.Wqkv = nn.Linear(dim, 3 * dim, bias=qkv_bias, **factory_kwargs)
@@ -199,7 +199,7 @@ class FlashSelfMHAModified(nn.Module):
         if freqs_cis_img is not None:
             qq, kk = apply_rotary_emb(q, k, freqs_cis_img)
             assert (
-                qq.shape == q.shape and kk.shape == k.shape
+                    qq.shape == q.shape and kk.shape == k.shape
             ), f"qq: {qq.shape}, q: {q.shape}, kk: {kk.shape}, k: {k.shape}"
             q, k = qq, kk
 
@@ -211,6 +211,12 @@ class FlashSelfMHAModified(nn.Module):
             qkv = qkv.to(torch.bfloat16)
         # ================== 插入结束 ==================
         context = self.inner_attn(qkv)
+
+        # 修复：检查 context 类型是否与 out_proj 权重类型一致
+        # FlashAttention 输出通常是 BF16，如果 out_proj 是 Float32，会报错
+        if context.dtype != self.out_proj.weight.dtype:
+            context = context.to(self.out_proj.weight.dtype)
+
         out = self.out_proj(context.view(b, s, d))
         out = self.proj_drop(out)
 
@@ -225,18 +231,18 @@ class FlashCrossMHAModified(nn.Module):
     """
 
     def __init__(
-        self,
-        qdim,
-        kdim,
-        num_heads,
-        qkv_bias=True,
-        qk_norm=False,
-        is_ipa=False,
-        attn_drop=0.0,
-        proj_drop=0.0,
-        device=None,
-        dtype=None,
-        norm_layer=nn.LayerNorm,
+            self,
+            qdim,
+            kdim,
+            num_heads,
+            qkv_bias=True,
+            qk_norm=False,
+            is_ipa=False,
+            attn_drop=0.0,
+            proj_drop=0.0,
+            device=None,
+            dtype=None,
+            norm_layer=nn.LayerNorm,
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
@@ -246,10 +252,10 @@ class FlashCrossMHAModified(nn.Module):
         assert self.qdim % num_heads == 0, "self.qdim must be divisible by num_heads"
         self.head_dim = self.qdim // num_heads
         assert (
-            self.head_dim % 8 == 0 and self.head_dim <= 128
+                self.head_dim % 8 == 0 and self.head_dim <= 128
         ), "Only support head_dim <= 128 and divisible by 8"
 
-        self.scale = self.head_dim**-0.5
+        self.scale = self.head_dim ** -0.5
         self.is_ipa = is_ipa
 
         self.q_proj = nn.Linear(qdim, qdim, bias=qkv_bias, **factory_kwargs)
@@ -311,7 +317,7 @@ class FlashCrossMHAModified(nn.Module):
         # 霸道强转：只要不是 BF16，统统转过去！
         if q.dtype != torch.bfloat16:
             q = q.to(torch.bfloat16)
-            
+
         if kv.dtype != torch.bfloat16:
             kv = kv.to(torch.bfloat16)
         # ================== 插入结束 ==================
@@ -333,6 +339,10 @@ class FlashCrossMHAModified(nn.Module):
 
             context = context * t_scale + context_2 * i_scale
 
+        # 修复：检查 context 类型是否与 out_proj 权重类型一致
+        if context.dtype != self.out_proj.weight.dtype:
+            context = context.to(self.out_proj.weight.dtype)
+
         out = self.out_proj(context)
         out = self.proj_drop(out)
 
@@ -347,18 +357,18 @@ class CrossAttention(nn.Module):
     """
 
     def __init__(
-        self,
-        qdim,
-        kdim,
-        num_heads,
-        qkv_bias=True,
-        qk_norm=False,
-        is_ipa=False,
-        attn_drop=0.0,
-        proj_drop=0.0,
-        device=None,
-        dtype=None,
-        norm_layer=nn.LayerNorm,
+            self,
+            qdim,
+            kdim,
+            num_heads,
+            qkv_bias=True,
+            qk_norm=False,
+            is_ipa=False,
+            attn_drop=0.0,
+            proj_drop=0.0,
+            device=None,
+            dtype=None,
+            norm_layer=nn.LayerNorm,
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
@@ -368,9 +378,9 @@ class CrossAttention(nn.Module):
         assert self.qdim % num_heads == 0, "self.qdim must be divisible by num_heads"
         self.head_dim = self.qdim // num_heads
         assert (
-            self.head_dim % 8 == 0 and self.head_dim <= 128
+                self.head_dim % 8 == 0 and self.head_dim <= 128
         ), "Only support head_dim <= 128 and divisible by 8"
-        self.scale = self.head_dim**-0.5
+        self.scale = self.head_dim ** -0.5
         self.is_ipa = is_ipa
 
         self.q_proj = nn.Linear(qdim, qdim, bias=qkv_bias, **factory_kwargs)
@@ -427,7 +437,6 @@ class CrossAttention(nn.Module):
             assert qq.shape == q.shape, f"qq: {qq.shape}, q: {q.shape}"
             q = qq
 
-
         if torch.__version__[0] == '1':
             q = q * self.scale
             q = q.transpose(-2, -3).contiguous()  # q ->  B, L1, H, C - B, H, L1, C
@@ -445,7 +454,7 @@ class CrossAttention(nn.Module):
             x = F.scaled_dot_product_attention(q, k, v, dropout_p=self.attn_drop.p)
         else:
             raise NotImplementedError
-        
+
         context = x.transpose(1, 2)  # context -> B, H, L1, C - B, L1, H, C
 
         if is_ipa:
@@ -482,14 +491,14 @@ class Attention(nn.Module):
     """
 
     def __init__(
-        self,
-        dim,
-        num_heads,
-        qkv_bias=True,
-        qk_norm=False,
-        attn_drop=0.0,
-        proj_drop=0.0,
-        norm_layer=nn.LayerNorm,
+            self,
+            dim,
+            num_heads,
+            qkv_bias=True,
+            qk_norm=False,
+            attn_drop=0.0,
+            proj_drop=0.0,
+            norm_layer=nn.LayerNorm,
     ):
         super().__init__()
         self.dim = dim
@@ -498,9 +507,9 @@ class Attention(nn.Module):
         self.head_dim = self.dim // num_heads
         # This assertion is aligned with flash attention
         assert (
-            self.head_dim % 8 == 0 and self.head_dim <= 128
+                self.head_dim % 8 == 0 and self.head_dim <= 128
         ), "Only support head_dim <= 128 and divisible by 8"
-        self.scale = self.head_dim**-0.5
+        self.scale = self.head_dim ** -0.5
 
         # qkv --> Wqkv
         self.Wqkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
@@ -534,19 +543,19 @@ class Attention(nn.Module):
         if freqs_cis_img is not None:
             qq, kk = apply_rotary_emb(q, k, freqs_cis_img, head_first=True)
             assert (
-                qq.shape == q.shape and kk.shape == k.shape
+                    qq.shape == q.shape and kk.shape == k.shape
             ), f"qq: {qq.shape}, q: {q.shape}, kk: {kk.shape}, k: {k.shape}"
             q, k = qq, kk
 
         if torch.__version__[0] == '1':
             q = q * self.scale
             # Here we force q and k to be float32 to avoid numerical overflow
-            attn = q.float() @ k.float().transpose(-2, -1)    # [b, h, s, d] @ [b, h, d, s]
+            attn = q.float() @ k.float().transpose(-2, -1)  # [b, h, s, d] @ [b, h, d, s]
             if mask is not None:
                 attn = attn + mask
-            attn = attn.softmax(dim=-1).to(q.dtype)        # [b, h, s, s]
+            attn = attn.softmax(dim=-1).to(q.dtype)  # [b, h, s, s]
             attn = self.attn_drop(attn)
-            x = attn @ v                  # [b, h, s, d]
+            x = attn @ v  # [b, h, s, d]
         elif torch.__version__[0] == '2':
             x = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, dropout_p=self.attn_drop.p)
         else:
@@ -559,4 +568,3 @@ class Attention(nn.Module):
         out_tuple = (x,)
 
         return out_tuple
-

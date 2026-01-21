@@ -14,11 +14,11 @@ results_dir="./log_EXP"
 
 # ================= 训练参数 (适配 L20 48G) =================
 # L20 显存较大，Batch Size 可以尝试 4 (如果 OOM 就改 2)
-batch_size=4
+batch_size=1
 image_size=1024
 
 # 梯度累积：8卡 x Batch4 x Accu2 = Global Batch 64
-grad_accu_steps=2
+grad_accu_steps=8
 
 # 学习率：全量微调建议 1e-4
 lr=0.0001
@@ -27,8 +27,8 @@ lr=0.0001
 epochs=5
 
 # 保存频率：每 5000 步存一次
-ckpt_every=5000
-ckpt_latest_every=5000
+ckpt_every=20000
+ckpt_latest_every=20000
 
 # ================= 启动命令 =================
 # 注意：这里调用的是 run_g.sh，它内部会调用 deepspeed
@@ -48,7 +48,6 @@ sh $(dirname "$0")/run_g.sh \
     --warmup-num-steps 2000 \
     --use-flash-attn \
     --use-zero-stage 2 \
-#    --gradient-checkpointing \
     --results-dir ${results_dir} \
     --resume \
     --resume-module-root ${resume_module_root} \

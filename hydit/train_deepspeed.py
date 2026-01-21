@@ -68,7 +68,7 @@ def deepspeed_initialize(args, logger, model, opt, deepspeed_config):
 
 
 def save_checkpoint(
-    args, rank, logger, model, ema, epoch, train_steps, checkpoint_dir, by="step"
+        args, rank, logger, model, ema, epoch, train_steps, checkpoint_dir, by="step"
 ):
     def save_lora_weight(checkpoint_dir, client_state, tag=f"{train_steps:07d}.pt"):
         cur_ckpt_save_dir = f"{checkpoint_dir}/{tag}"
@@ -108,8 +108,8 @@ def save_checkpoint(
             tag = f"{train_steps:07d}.pt"
             dst_paths.append(save_model_weight(client_state, tag))
         if (
-            train_steps % args.ckpt_latest_every == 0
-            or train_steps == args.max_training_steps
+                train_steps % args.ckpt_latest_every == 0
+                or train_steps == args.max_training_steps
         ):
             tag = "latest.pt"
             dst_paths.append(save_model_weight(client_state, tag))
@@ -137,7 +137,7 @@ def save_checkpoint(
 
 @torch.no_grad()
 def prepare_model_inputs(
-    args, batch, device, vae, text_encoder, text_encoder_t5, freqs_cis_img
+        args, batch, device, vae, text_encoder, text_encoder_t5, freqs_cis_img
 ):
     (
         image,
@@ -208,6 +208,12 @@ def prepare_model_inputs(
 
 
 def main(args):
+    # ================== 【关键修改】 ==================
+    # 强制将 args.deepspeed 设为 True。
+    # 因为 DeepSpeed Launcher 可能会把 --deepspeed 参数“吃掉”，导致 args.deepspeed 变成 False。
+    args.deepspeed = True
+    # ================== 【修改结束】 ==================
+
     if args.training_parts == "lora":
         args.use_ema = False
 
@@ -272,11 +278,11 @@ def main(args):
     # assert args.deepspeed, f"Must enable deepspeed in this script: train_deepspeed.py"
     if args.deepspeed:
         with deepspeed.zero.Init(
-            data_parallel_group=torch.distributed.group.WORLD,
-            remote_device=None if args.remote_device == "none" else args.remote_device,
-            config_dict_or_path=deepspeed_config,
-            mpu=None,
-            enabled=args.zero_stage == 3,
+                data_parallel_group=torch.distributed.group.WORLD,
+                remote_device=None if args.remote_device == "none" else args.remote_device,
+                config_dict_or_path=deepspeed_config,
+                mpu=None,
+                enabled=args.zero_stage == 3,
         ):
             model = HUNYUAN_DIT_MODELS[args.model](
                 args,
@@ -369,7 +375,7 @@ def main(args):
     logger.info(
         f"    Optimizer parameters: lr={args.lr}, weight_decay={args.weight_decay}"
     )
-    
+
     logger.info("    Using deepspeed optimizer")
     opt = None
 
@@ -459,7 +465,6 @@ def main(args):
         else:
             model.enable_input_requires_grad()
             model = get_peft_model(model, loraconfig)
-
 
     logger.info(f"    Training parts: {args.training_parts}")
 
@@ -591,9 +596,9 @@ def main(args):
                 model.backward(loss)
             else:
                 loss.backward()
-                
+
             last_batch_iteration = (train_steps + 1) // (
-                global_batch_size // (batch_size * world_size)
+                    global_batch_size // (batch_size * world_size)
             )
             if args.deepspeed:
                 model.step(lr_kwargs={"last_batch_iteration": last_batch_iteration})
@@ -632,9 +637,9 @@ def main(args):
                         else ""
                     )
                     + f"Train Loss: {avg_loss:.4f}, "
-                    f"Lr: {opt.param_groups[0]['lr']:.6g}, "
-                    f"Steps/Sec: {steps_per_sec:.2f}, "
-                    f"Samples/Sec: {steps_per_sec * batch_size * world_size:.2f}"
+                      f"Lr: {opt.param_groups[0]['lr']:.6g}, "
+                      f"Steps/Sec: {steps_per_sec:.2f}, "
+                      f"Samples/Sec: {steps_per_sec * batch_size * world_size:.2f}"
                 )
                 # Reset monitoring variables:
                 running_loss = 0
@@ -646,8 +651,8 @@ def main(args):
                 gc.collect()
 
             if (
-                train_steps % args.ckpt_every == 0
-                or train_steps % args.ckpt_latest_every == 0
+                    train_steps % args.ckpt_every == 0
+                    or train_steps % args.ckpt_latest_every == 0
             ) and train_steps > 0:
                 save_checkpoint(
                     args,

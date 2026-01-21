@@ -123,7 +123,7 @@ def get_args(default_args=None):
     parser.add_argument("--warmup-min-lr", type=float, default=1e-6)
     parser.add_argument("--warmup-num-steps", type=float, default=0)
     parser.add_argument("--weight-decay", type=float, default=0, help="weight-decay in optimizer")
-    parser.add_argument("--rope-img", type=str, default=None, choices=["extend", "base512", "base1024"], help="Extend or interpolate the positional embedding of the image.")
+    parser.add_argument("--rope-img", type=str, default="base1024", choices=["extend", "base512", "base1024"], help="Extend or interpolate the positional embedding of the image.")
     parser.add_argument("--rope-real", action="store_true", help="Use real part and imaginary part separately for RoPE.")
 
     # Classifier-free
